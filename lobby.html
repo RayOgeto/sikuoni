@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatroom</title>
+
+    <link rel="stylesheet" href="lobby.css">
+</head>
+<body>
+    
+    <form id="join-form">
+        <input type="text" name="invite_link" required>
+        <input type="submit" value="join room">
+    </form>
+
+</body>
+
+    <script>
+        let form = document.getElementById('join-form')
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault()
+
+            let invitecode = e.target.invite_link.value
+            window.location = `index.html?room=${invitecode}`
+        })
+    </script>
+
+</html>

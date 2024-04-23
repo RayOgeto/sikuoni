@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+    
+    <div id="videos">
+        <video class="video-player" id="user-1" autoplay playsinline></video>
+        <video class="video-player" id="user-2" autoplay playsinline></video>
+
+    </div>
+
+    <div id="controls">
+        <!-- add camera icon -->
+        <div class="control-container" id="camera-btn">
+            <img src="icons/camera.png">
+        </div>
+        <!-- add mic icon -->
+        <div class="control-container" id="mic-btn">
+            <img src="icons/mic.png">
+
+        </div>
+        <!-- add leave icon  -->
+        <a href="lobby.html">
+            <div class="control-container" id="leave-btn">
+                <img src="icons/phone.png">
+            </div>
+        </a>
+
+    </div>
+
+</body>
+<script src="agora-rtm-sdk-1.4.4.js"></script>
+<script src="main.js"></script>
+
+
+</html>
