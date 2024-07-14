@@ -1,6 +1,3 @@
-let APP_ID = "1ae489bf63a1492abf6aa0800618cb58"
-
-
 let token = null;
 let uid = String(Math.floor(Math.random() * 10000))
 
@@ -27,6 +24,7 @@ const servers = {
     ]
 }
 
+let APP_ID = "1ae489bf63a1492abf6aa0800618cb58"
 
 let constraints = {
     video:{
