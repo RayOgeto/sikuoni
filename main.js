@@ -53,7 +53,11 @@ let init = async () => {
 
 let handleUserLeft = (MemberId) => {
     document.getElementById('user-2').style.display = 'none'
-    document.getElementById('user-1').classList.remove('smallFrame')
+    let user1 = document.getElementById('user-1');
+    user1.classList.remove('smallFrame')
+    user1.style.position = '';
+    user1.style.left = '';
+    user1.style.top = '';
 }
 
 let handleMessageFromPeer = async (message, MemberId) => {
@@ -90,8 +94,13 @@ let createPeerConnection = async (MemberId) => {
     document.getElementById('user-2').srcObject = remoteStream
     document.getElementById('user-2').style.display = 'block'
 
-    document.getElementById('user-1').classList.add('smallFrame')
-
+    let user1 = document.getElementById('user-1');
+    user1.classList.add('smallFrame')
+    user1.style.position = 'fixed';
+    user1.style.cursor = 'grab';
+    user1.style.left = '20px';
+    user1.style.top = '20px';
+    makeDraggable(user1);
 
     if(!localStream){
         localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:false})
@@ -179,3 +188,55 @@ document.getElementById('camera-btn').addEventListener('click', toggleCamera)
 document.getElementById('mic-btn').addEventListener('click', toggleMic)
 
 init()
+
+// Draggable smallFrame logic
+function makeDraggable(element) {
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    // Mouse events
+    element.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        offsetX = e.clientX - element.offsetLeft;
+        offsetY = e.clientY - element.offsetTop;
+        element.style.cursor = 'grabbing';
+    });
+    document.addEventListener('mousemove', function(e) {
+        if (isDragging) {
+            let x = e.clientX - offsetX;
+            let y = e.clientY - offsetY;
+            // Keep within viewport
+            x = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, x));
+            y = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, y));
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+        }
+    });
+    document.addEventListener('mouseup', function() {
+        isDragging = false;
+        element.style.cursor = 'grab';
+    });
+
+    // Touch events
+    element.addEventListener('touchstart', function(e) {
+        isDragging = true;
+        const touch = e.touches[0];
+        offsetX = touch.clientX - element.offsetLeft;
+        offsetY = touch.clientY - element.offsetTop;
+    });
+    document.addEventListener('touchmove', function(e) {
+        if (isDragging) {
+            const touch = e.touches[0];
+            let x = touch.clientX - offsetX;
+            let y = touch.clientY - offsetY;
+            x = Math.max(0, Math.min(window.innerWidth - element.offsetWidth, x));
+            y = Math.max(0, Math.min(window.innerHeight - element.offsetHeight, y));
+            element.style.left = x + 'px';
+            element.style.top = y + 'px';
+        }
+    });
+    document.addEventListener('touchend', function() {
+        isDragging = false;
+    });
+}
