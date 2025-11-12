@@ -16,6 +16,9 @@ let localStream;
 let remoteStream;
 let peerConnection;
 
+let displayFrame = document.getElementById('user-1')
+let hideFrame = document.getElementById('user-2')
+
 const servers = {
     iceServers:[
         {
@@ -32,6 +35,16 @@ let constraints = {
         height:{min:480, ideal:1080, max:1080}
     },
     audio:true
+}
+
+let videoDevices = [];
+let currentVideoDeviceIndex = 0;
+let isScreenSharing = false;
+let screenShareStream = null;
+
+async function getConnectedDevices(type) {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    return devices.filter(device => device.kind === type);
 }
 
 let init = async () => {
@@ -52,6 +65,11 @@ let init = async () => {
 
         client.on('MessageFromPeer', handleMessageFromPeer)
 
+        videoDevices = await getConnectedDevices('videoinput');
+        if (videoDevices.length > 0) {
+            constraints.video.deviceId = { exact: videoDevices[currentVideoDeviceIndex].deviceId };
+        }
+
         localStream = await navigator.mediaDevices.getUserMedia(constraints)
         document.getElementById('user-1').srcObject = localStream
     } catch (error) {
@@ -69,11 +87,10 @@ let init = async () => {
 
 let handleUserLeft = (MemberId) => {
     document.getElementById('user-2').style.display = 'none'
-    let user1 = document.getElementById('user-1');
-    user1.classList.remove('smallFrame')
-    user1.style.position = '';
-    user1.style.left = '';
-    user1.style.top = '';
+    displayFrame.classList.remove('smallFrame')
+    displayFrame.style.position = '';
+    displayFrame.style.left = '';
+    displayFrame.style.top = '';
 }
 
 let handleMessageFromPeer = async (message, MemberId) => {
@@ -110,13 +127,12 @@ let createPeerConnection = async (MemberId) => {
     document.getElementById('user-2').srcObject = remoteStream
     document.getElementById('user-2').style.display = 'block'
 
-    let user1 = document.getElementById('user-1');
-    user1.classList.add('smallFrame')
-    user1.style.position = 'fixed';
-    user1.style.cursor = 'grab';
-    user1.style.left = '20px';
-    user1.style.top = '20px';
-    makeDraggable(user1);
+    document.getElementById('user-1').classList.add('smallFrame')
+    document.getElementById('user-1').style.position = 'fixed';
+    document.getElementById('user-1').style.cursor = 'grab';
+    document.getElementById('user-1').style.left = '20px';
+    document.getElementById('user-1').style.top = '20px';
+    makeDraggable(document.getElementById('user-1'));
 
     if(!localStream){
         localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:false})
@@ -197,11 +213,110 @@ let toggleMic = async () => {
         document.getElementById('mic-btn').style.backgroundColor = 'rgb(179, 102, 249, .9)'
     }
 }
+
+let switchCamera = async () => {
+    if (videoDevices.length < 2) {
+        alert('No other cameras found.');
+        return;
+    }
+
+    currentVideoDeviceIndex = (currentVideoDeviceIndex + 1) % videoDevices.length;
+    const newDeviceId = videoDevices[currentVideoDeviceIndex].deviceId;
+
+    // Stop current video track
+    localStream.getVideoTracks().forEach(track => track.stop());
+
+    // Get new stream from selected camera
+    const newConstraints = {
+        video: { deviceId: { exact: newDeviceId } },
+        audio: true
+    };
+    try {
+        const newStream = await navigator.mediaDevices.getUserMedia(newConstraints);
+        localStream = newStream;
+        document.getElementById('user-1').srcObject = localStream;
+
+        // Replace track in peer connection
+        const videoTrack = newStream.getVideoTracks()[0];
+        const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
+        if (sender) {
+            sender.replaceTrack(videoTrack);
+        }
+    } catch (error) {
+        console.error('Error switching camera:', error);
+        alert('Failed to switch camera.');
+    }
+};
+
+let startScreenShare = async () => {
+    try {
+        screenShareStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        isScreenSharing = true;
+
+        // Stop current video track from camera
+        localStream.getVideoTracks().forEach(track => track.stop());
+
+        // Replace video track in peer connection with screen share track
+        const screenTrack = screenShareStream.getVideoTracks()[0];
+        const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
+        if (sender) {
+            sender.replaceTrack(screenTrack);
+        }
+
+        document.getElementById('user-1').srcObject = screenShareStream;
+
+        screenTrack.onended = () => {
+            stopScreenShare();
+        };
+
+        document.getElementById('screen-share-btn').style.backgroundColor = 'rgb(255, 80, 80)'; // Indicate active
+    } catch (error) {
+        console.error('Error starting screen share:', error);
+        alert('Failed to start screen sharing.');
+    }
+};
+
+let stopScreenShare = async () => {
+    if (screenShareStream) {
+        screenShareStream.getTracks().forEach(track => track.stop());
+    }
+    isScreenSharing = false;
+
+    // Get back to camera stream
+    const newConstraints = {
+        video: { deviceId: { exact: videoDevices[currentVideoDeviceIndex].deviceId } },
+        audio: true
+    };
+    try {
+        const newStream = await navigator.mediaDevices.getUserMedia(newConstraints);
+        localStream = newStream;
+        document.getElementById('user-1').srcObject = localStream;
+
+        // Replace track in peer connection with camera track
+        const videoTrack = newStream.getVideoTracks()[0];
+        const sender = peerConnection.getSenders().find(s => s.track.kind === 'video');
+        if (sender) {
+            sender.replaceTrack(videoTrack);
+        }
+        document.getElementById('screen-share-btn').style.backgroundColor = 'rgb(179, 102, 249, .9)'; // Reset button color
+    } catch (error) {
+        console.error('Error stopping screen share and reverting to camera:', error);
+        alert('Failed to revert to camera after stopping screen share.');
+    }
+};
   
 window.addEventListener('beforeunload', leaveChannel)
 
 document.getElementById('camera-btn').addEventListener('click', toggleCamera)
 document.getElementById('mic-btn').addEventListener('click', toggleMic)
+document.getElementById('switch-camera-btn').addEventListener('click', switchCamera)
+document.getElementById('screen-share-btn').addEventListener('click', () => {
+    if (isScreenSharing) {
+        stopScreenShare();
+    } else {
+        startScreenShare();
+    }
+});
 
 init()
 
@@ -256,3 +371,37 @@ function makeDraggable(element) {
         isDragging = false;
     });
 }
+
+let toggleVideoFocus = () => {
+    let localVideo = document.getElementById('user-1');
+    let remoteVideo = document.getElementById('user-2');
+
+    if (localVideo.classList.contains('smallFrame')) {
+        // Remote is main, local is small. Swap to local is main, remote is small.
+        localVideo.classList.remove('smallFrame');
+        localVideo.style.position = '';
+        localVideo.style.left = '';
+        localVideo.style.top = '';
+        remoteVideo.classList.add('smallFrame');
+        remoteVideo.style.position = 'fixed';
+        remoteVideo.style.cursor = 'grab';
+        remoteVideo.style.left = '20px';
+        remoteVideo.style.top = '20px';
+        makeDraggable(remoteVideo);
+    } else {
+        // Local is main, remote is small. Swap to remote is main, local is small.
+        remoteVideo.classList.remove('smallFrame');
+        remoteVideo.style.position = '';
+        remoteVideo.style.left = '';
+        remoteVideo.style.top = '';
+        localVideo.classList.add('smallFrame');
+        localVideo.style.position = 'fixed';
+        localVideo.style.cursor = 'grab';
+        localVideo.style.left = '20px';
+        localVideo.style.top = '20px';
+        makeDraggable(localVideo);
+    }
+}
+
+document.getElementById('user-1').addEventListener('click', toggleVideoFocus);
+document.getElementById('user-2').addEventListener('click', toggleVideoFocus);
