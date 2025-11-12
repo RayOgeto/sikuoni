@@ -22,6 +22,9 @@
                 <div class="btn">
                     <input type="submit" value="join room" class="btn">
                 </div>
+                <div class="btn">
+                    <button type="button" id="copy-invite-btn" class="btn">Copy Invite Link</button>
+                </div>
             </form>
         </div>
 
@@ -89,6 +92,21 @@
             let invitecode = e.target.invite_link.value
             window.location = `index.html?room=${invitecode}`
         })
+
+        document.getElementById('copy-invite-btn').addEventListener('click', async () => {
+            let inviteInput = document.querySelector('input[name="invite_link"]');
+            if (inviteInput.value) {
+                try {
+                    await navigator.clipboard.writeText(window.location.origin + `/index.html?room=${inviteInput.value}`);
+                    alert('Invite link copied to clipboard!');
+                } catch (err) {
+                    console.error('Failed to copy: ', err);
+                    alert('Failed to copy the invite link.');
+                }
+            } else {
+                alert('Please enter a room code first.');
+            }
+        });
     </script>
 
     <script src="random.js"></script>

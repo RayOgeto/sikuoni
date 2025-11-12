@@ -35,19 +35,35 @@ let constraints = {
 }
 
 let init = async () => {
-    client = await AgoraRTM.createInstance(APP_ID)
-    await client.login({uid, token})
+    let loadingIndicator = document.getElementById('loading-indicator');
+    if (loadingIndicator) {
+        loadingIndicator.style.display = 'block';
+    }
 
-    channel = client.createChannel(roomId)
-    await channel.join()
+    try {
+        client = await AgoraRTM.createInstance(APP_ID)
+        await client.login({uid, token})
 
-    channel.on('MemberJoined', handleUserJoined)
-    channel.on('MemberLeft', handleUserLeft)
+        channel = client.createChannel(roomId)
+        await channel.join()
 
-    client.on('MessageFromPeer', handleMessageFromPeer)
+        channel.on('MemberJoined', handleUserJoined)
+        channel.on('MemberLeft', handleUserLeft)
 
-    localStream = await navigator.mediaDevices.getUserMedia(constraints)
-    document.getElementById('user-1').srcObject = localStream
+        client.on('MessageFromPeer', handleMessageFromPeer)
+
+        localStream = await navigator.mediaDevices.getUserMedia(constraints)
+        document.getElementById('user-1').srcObject = localStream
+    } catch (error) {
+        console.error('Initialization error:', error);
+        alert('Failed to initialize the video call. Please check permissions and try again.');
+        window.location = 'lobby.html';
+        return;
+    } finally {
+        if (loadingIndicator) {
+            loadingIndicator.style.display = 'none';
+        }
+    }
 }
  
 
