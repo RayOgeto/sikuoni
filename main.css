@@ -63,10 +63,20 @@
     cursor: pointer;
 }
 
-.control-container img {
+.control-container img,
+.control-container svg {
     height: 30px;
     width: 30px;
 }
+
+.control-container svg {
+    fill: none;
+    stroke: white;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 
 #leave-btn {
     background-color: rgb(255,80,80,1);
@@ -216,8 +226,17 @@
     z-index: 10;
 }
 
-.mute-icon img {
+.mute-icon img,
+.mute-icon svg {
     width: 20px;
     height: 20px;
     display: block;
+}
+
+.mute-icon svg {
+    fill: none;
+    stroke: #ff5050; /* Red for muted */
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }

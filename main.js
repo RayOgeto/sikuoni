@@ -311,11 +311,17 @@ let stopScreenShare = async () => {
     isScreenSharing = false;
 
     // Get back to camera stream
+    // Use safe default constraints to avoid OverconstrainedError
     const newConstraints = {
-        video: { deviceId: { exact: videoDevices[currentVideoDeviceIndex].deviceId } },
+        video: true,
         audio: true
     };
     try {
+        // If we have a specific device tracked, try to use it as an ideal
+        if (videoDevices.length > 0 && videoDevices[currentVideoDeviceIndex]) {
+             newConstraints.video = { deviceId: { ideal: videoDevices[currentVideoDeviceIndex].deviceId } };
+        }
+
         const newStream = await navigator.mediaDevices.getUserMedia(newConstraints);
         localStream = newStream;
         document.getElementById('user-1').srcObject = localStream;
