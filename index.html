@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sikuoni.</title>
-    <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="main.css?v=1">
 </head>
 <body>
     <div id="loading-indicator" style="display: none; text-align: center; padding: 20px; color: white;">
@@ -13,9 +13,18 @@
     </div>
     
     <div id="videos">
-        <video class="video-player" id="user-1" autoplay playsinline></video>
-        <video class="video-player" id="user-2" autoplay playsinline></video>
-
+        <div class="video-wrapper" id="wrapper-user-1">
+            <video class="video-player" id="user-1" autoplay playsinline></video>
+            <div class="mute-icon" id="mute-icon-user-1">
+                <img src="icons/mic.png" alt="Muted">
+            </div>
+        </div>
+        <div class="video-wrapper" id="wrapper-user-2">
+            <video class="video-player" id="user-2" autoplay playsinline></video>
+            <div class="mute-icon" id="mute-icon-user-2">
+                <img src="icons/mic.png" alt="Muted">
+            </div>
+        </div>
     </div>
 
     <div id="controls">
@@ -35,6 +44,10 @@
         <div class="control-container" id="screen-share-btn">
             <img src="icons/invite.png" alt="Share Screen">
         </div>
+        <!-- add chat icon -->
+        <div class="control-container" id="chat-btn">
+            <img src="icons/invite.png" alt="Chat" style="filter: hue-rotate(90deg);">
+        </div>
         <!-- add leave icon  -->
         <a href="lobby.html">
             <div class="control-container" id="leave-btn">
@@ -44,7 +57,20 @@
 
     </div>
 
+    <div id="chat-container">
+        <div id="chat-header">
+            <span>Chat</span>
+            <span id="close-chat" style="cursor:pointer;">&times;</span>
+        </div>
+        <div id="chat-messages"></div>
+        <form id="chat-form">
+            <input type="text" name="message" placeholder="Type a message..." required autocomplete="off">
+        </form>
+    </div>
+
 </body>
+<script src="config.js"></script>
+<script src="toast.js"></script>
 <script src="agora-rtm-sdk-1.4.4.js"></script>
 <script src="main.js"></script>
 

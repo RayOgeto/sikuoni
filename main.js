@@ -19,22 +19,14 @@ let peerConnection;
 let displayFrame = document.getElementById('user-1')
 let hideFrame = document.getElementById('user-2')
 
-const servers = {
-    iceServers:[
-        {
-            urls:['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302']
-        }
-    ]
-}
+const servers = ICE_SERVERS;
 
-let APP_ID = "1ae489bf63a1492abf6aa0800618cb58"
+// Use constants from config.js
+// APP_ID is now imported from config.js
 
 let constraints = {
-    video:{
-        innerWidth:{min:640, ideal:1920, max:1920},
-        height:{min:480, ideal:1080, max:1080}
-    },
-    audio:true
+    video: true,
+    audio: true
 }
 
 let videoDevices = [];
@@ -60,23 +52,35 @@ let init = async () => {
         channel = client.createChannel(roomId)
         await channel.join()
 
+        // Check for existing members to enforce capacity
+        const members = await channel.getMembers();
+        if (members.length > 2) {
+            showToast('Room is full! Redirecting to lobby...', 'error');
+            await channel.leave();
+            await client.logout();
+            setTimeout(() => {
+                window.location = 'lobby.html';
+            }, 3000);
+            return;
+        }
+
         channel.on('MemberJoined', handleUserJoined)
         channel.on('MemberLeft', handleUserLeft)
+        channel.on('ChannelMessage', handleChannelMessage)
 
         client.on('MessageFromPeer', handleMessageFromPeer)
 
         videoDevices = await getConnectedDevices('videoinput');
-        if (videoDevices.length > 0) {
-            constraints.video.deviceId = { exact: videoDevices[currentVideoDeviceIndex].deviceId };
-        }
+        // if (videoDevices.length > 0) {
+        //     constraints.video = { deviceId: { exact: videoDevices[currentVideoDeviceIndex].deviceId } };
+        // }
 
         localStream = await navigator.mediaDevices.getUserMedia(constraints)
         document.getElementById('user-1').srcObject = localStream
     } catch (error) {
         console.error('Initialization error:', error);
-        alert('Failed to initialize the video call. Please check permissions and try again.');
-        window.location = 'lobby.html';
-        return;
+        showToast('Failed to initialize: ' + error.toString(), 'error');
+        // Do not immediately redirect on error to allow reading the toast
     } finally {
         if (loadingIndicator) {
             loadingIndicator.style.display = 'none';
@@ -86,7 +90,7 @@ let init = async () => {
  
 
 let handleUserLeft = (MemberId) => {
-    document.getElementById('user-2').style.display = 'none'
+    document.getElementById('wrapper-user-2').style.display = 'none'
     displayFrame.classList.remove('smallFrame')
     displayFrame.style.position = '';
     displayFrame.style.left = '';
@@ -125,7 +129,7 @@ let createPeerConnection = async (MemberId) => {
 
     remoteStream = new MediaStream()
     document.getElementById('user-2').srcObject = remoteStream
-    document.getElementById('user-2').style.display = 'block'
+    document.getElementById('wrapper-user-2').style.display = 'block'
 
     document.getElementById('user-1').classList.add('smallFrame')
     document.getElementById('user-1').style.position = 'fixed';
@@ -200,17 +204,41 @@ let toggleCamera = async () => {
         videoTrack.enabled = true
         document.getElementById('camera-btn').style.backgroundColor = 'rgb(179, 102, 249, .9)'
     }
+    
+    // Send status update
+    sendUserInfo();
 }
 
 let toggleMic = async () => {
     let audioTrack = localStream.getTracks().find(track => track.kind === 'audio')
+    let muteIcon = document.getElementById('mute-icon-user-1');
 
     if(audioTrack.enabled){
         audioTrack.enabled = false
         document.getElementById('mic-btn').style.backgroundColor = 'rgb(255, 80, 80)'
+        muteIcon.style.display = 'block';
     }else{
         audioTrack.enabled = true
         document.getElementById('mic-btn').style.backgroundColor = 'rgb(179, 102, 249, .9)'
+        muteIcon.style.display = 'none';
+    }
+
+    // Send status update
+    sendUserInfo();
+}
+
+let sendUserInfo = async () => {
+    let videoTrack = localStream.getTracks().find(track => track.kind === 'video');
+    let audioTrack = localStream.getTracks().find(track => track.kind === 'audio');
+    
+    let info = {
+        type: 'user-info',
+        camera: videoTrack ? videoTrack.enabled : false,
+        mic: audioTrack ? audioTrack.enabled : false
+    };
+
+    if(channel){
+        await channel.sendMessage({text: JSON.stringify(info)});
     }
 }
 
@@ -373,6 +401,11 @@ function makeDraggable(element) {
 }
 
 let toggleVideoFocus = () => {
+    let remoteVideoWrapper = document.getElementById('wrapper-user-2');
+    if (remoteVideoWrapper.style.display === 'none') {
+        return;
+    }
+
     let localVideo = document.getElementById('user-1');
     let remoteVideo = document.getElementById('user-2');
 
@@ -405,3 +438,78 @@ let toggleVideoFocus = () => {
 
 document.getElementById('user-1').addEventListener('click', toggleVideoFocus);
 document.getElementById('user-2').addEventListener('click', toggleVideoFocus);
+
+
+// ==============================
+// Chat & Status Logic
+// ==============================
+
+let handleChannelMessage = async (messageData, MemberId) => {
+    let data = JSON.parse(messageData.text);
+
+    if (data.type === 'chat') {
+        addMessageToDom(data.displayName, data.message);
+    } else if (data.type === 'user-info') {
+        updatePeerStatus(MemberId, data);
+    }
+}
+
+let updatePeerStatus = (MemberId, data) => {
+    let remoteVideo = document.getElementById('user-2');
+    let muteIcon = document.getElementById('mute-icon-user-2');
+    
+    // Update Mic Icon
+    if (!data.mic) {
+        muteIcon.style.display = 'block';
+    } else {
+        muteIcon.style.display = 'none';
+    }
+
+    // You could also add a "Camera Off" placeholder here if !data.camera
+}
+
+let addMessageToDom = (name, message) => {
+    let messagesWrapper = document.getElementById('chat-messages');
+    
+    let newMessage = `
+        <div class="message__wrapper ${name === 'Me' ? 'me' : ''}">
+            <div class="message__body">
+                <strong class="message__author">${name}</strong>
+                <p class="message__text">${message}</p>
+            </div>
+        </div>
+    `;
+
+    messagesWrapper.insertAdjacentHTML('beforeend', newMessage);
+    
+    // Auto scroll to bottom
+    messagesWrapper.scrollTop = messagesWrapper.scrollHeight;
+}
+
+let sendMessage = async (e) => {
+    e.preventDefault();
+    let message = e.target.message.value;
+    if(!message) return;
+
+    channel.sendMessage({text: JSON.stringify({'type':'chat', 'message':message, 'displayName': uid})});
+    
+    addMessageToDom('Me', message);
+    e.target.reset();
+}
+
+// Chat UI Toggles
+let chatContainer = document.getElementById('chat-container');
+let chatBtn = document.getElementById('chat-btn');
+let closeChatBtn = document.getElementById('close-chat');
+
+chatBtn.addEventListener('click', () => {
+    chatContainer.style.display = 'flex';
+});
+
+closeChatBtn.addEventListener('click', () => {
+    chatContainer.style.display = 'none';
+});
+
+let chatForm = document.getElementById('chat-form');
+chatForm.addEventListener('submit', sendMessage);
+
